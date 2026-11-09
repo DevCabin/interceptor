@@ -54,10 +54,51 @@
 /* ============================================================================
    INTERCEPTOR — Driver's Seat
    A first-person, mobile-first homage to Spy Hunter.
-   Plain HTML + JS + Canvas. No libraries. Single file.
+   Plain HTML + JS + Canvas. No libraries. No build step. One file.
+
+   NAVIGATING THIS FILE
+   --------------------
+   The code is split into 22 #region sections in dependency order (later
+   sections use earlier ones). In VS Code:  Cmd/Ctrl+Shift+O  then type a
+   section name — or use the breadcrumbs, the Outline panel, or the fold
+   gutter. Search for "// #region" to see the whole map at once.
+   update() is further divided into nested #regions (boost, chasers, ...).
+
+   SECTION INDEX                                       what lives there
+   -------------------------------------------------------------------------
+   CORE
+     config ................. CFG — every tuning constant in the game
+     utils .................. clamp / lerp / rand / easing / RNG helpers
+     audio .................. AudioSys — Web Audio synth (no sound files)
+     sprite factory ......... procedural art, rendered once at boot
+     track .................. road segmentation + buildTrack()
+     game state ............. G — all live state — resetGame(), announce()
+     storage ................ high score + mute persistence
+   INPUT & COMBAT
+     input .................. touch joystick, buttons, keyboard, pause
+     weapons ................ fire* functions, killCar(), targeting
+     spawning ............... traffic, enemies, trucks, pursuers, drops
+     van docking ............ the weapons-van resupply sequence
+   SIMULATION
+     update ................. the entire sim, one function (+ sub-regions)
+   RENDERING
+     rendering .............. projection, sky, ridges, drawWorld()
+     mirror view ............ the rearview-mirror renderer
+     cockpit ................ dash, A-pillars, steering wheel
+     crisp text queue ....... qtext() / flushText() — READ BEFORE TEXT
+     HUD .................... score, MPH, weapon chips, announcements
+     joystick overlay ....... thumb-stick feedback
+     overlays ............... title, pause, game over, rotate screen
+   FRAME
+     frame render ........... buffer blit + CRT scanlines
+     main loop .............. fixed timestep + adaptive quality
+     boot ................... init, window.__test hooks, first frame
+
+   TWO OBJECTS TO KNOW: CFG (all tuning) and G (all live state).
+   Deeper tour, day-one recipes and gotchas live in DEVELOPERS.md.
    ========================================================================= */
 
-// ---------------------------------------------------------------- config ---
+// #region config: CFG — every tuning constant in the game ----------------------------------------
 const CFG = {
   segLen: 10,              // meters per road segment
   roadHalfW: 5.4,          // road half-width in meters (3 lanes)
@@ -89,7 +130,8 @@ const CFG = {
   vanScore: 250,
 };
 
-// ------------------------------------------------------------------ utils --
+// #endregion config -------------------------------------------------------------------------------
+// #region utils — clamp / lerp / rand / easing / RNG helpers --------------------------------------
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -105,7 +147,8 @@ function mulberry32(seed) {
   };
 }
 
-// ------------------------------------------------------------------ audio --
+// #endregion utils --------------------------------------------------------------------------------
+// #region audio: AudioSys — Web Audio synth (engine, guns, music) --------------------------------
 const AudioSys = (() => {
   let ctx = null, master = null, muted = false;
   let engineOsc = null, engineGain = null, engineFilter = null;
@@ -235,7 +278,8 @@ const AudioSys = (() => {
   }
   return { ensure, resume, engine, sfx, music, setMuted, get muted() { return muted; } };
 })();
-// ============================================================ sprite factory
+// #endregion audio --------------------------------------------------------------------------------
+// #region sprite factory — procedural art, rendered once at boot ----------------------------------
 // All art is generated once at boot into offscreen canvases, then blitted.
 function makeCanvas(w, h) {
   const c = document.createElement("canvas");
@@ -494,7 +538,8 @@ function buildSprites() {
   })();
 }
 
-// ==================================================================== track
+// #endregion sprite factory -----------------------------------------------------------------------
+// #region track — road segmentation + buildTrack() (straight today) -------------------------------
 const N_SEG = 2400;
 const segments = [];   // { curve, y, sprites:[{spr, off}] }
 const trackRand = mulberry32(6155);   // deterministic layout, endless loop
@@ -546,7 +591,8 @@ function segY(z) {
   const pct = (z % CFG.segLen) / CFG.segLen;
   return lerp(s.y, s2.y, pct);
 }
-// =============================================================== game state
+// #endregion track --------------------------------------------------------------------------------
+// #region game state: G — all live state; resetGame() / announce() ------------------------------
 const G = {
   state: "title",          // title | play | pause | over
   time: 0,
@@ -596,7 +642,8 @@ function announce(text, sub = "", t = 2.4) {
   if (G.announce.length > 3) G.announce.shift();
 }
 
-// ---------------------------------------------------------------- storage --
+// #endregion game state ---------------------------------------------------------------------------
+// #region storage — high score + mute persistence (localStorage) ----------------------------------
 const STORE_KEY = "interceptor.v1";
 function loadStore() {
   try {
@@ -611,7 +658,8 @@ function saveStore() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify({ hi: G.hi, mute: G.muted })); } catch (e) {}
 }
 
-// ------------------------------------------------------------------ input --
+// #endregion storage ------------------------------------------------------------------------------
+// #region input — touch joystick, buttons, keyboard, pause ----------------------------------------
 const input = { left: false, right: false, brake: false, fire: false, axis: 0, joyBrake: false, joyBoost: false };
 const pointers = new Map();   // pointerId -> button name | "joy"
 let buttons = [];             // layout-computed hit circles { name, x, y, r, label }
@@ -761,7 +809,8 @@ function startRun() {
   announce("WEAPONS HOT", "machine guns online — good hunting", 2.8);
 }
 
-// ---------------------------------------------------------------- weapons --
+// #endregion input --------------------------------------------------------------------------------
+// #region weapons — fire* functions, killCar(), explosions, targeting -----------------------------
 function fireSmoke() {
   if (G.state !== "play") return;
   if (G.weapons.smoke <= 0) { AudioSys.sfx.denied(); announce("NO SMOKE SCREEN", "dock with the weapons van", 1.6); return; }
@@ -871,7 +920,8 @@ function findGunTarget() {
   return target;
 }
 
-// ---------------------------------------------------------------- spawning --
+// #endregion weapons ------------------------------------------------------------------------------
+// #region spawning — traffic, enemies, trucks, pursuers, drops ------------------------------------
 function spawnAhead() {
   const want = Math.min(4 + Math.floor(G.level * 0.8), 9);
   let count = 0;
@@ -953,7 +1003,8 @@ function applyDrop(kind) {
   }
 }
 
-// ------------------------------------------------------------- van docking --
+// #endregion spawning -----------------------------------------------------------------------------
+// #region van docking — the weapons-van resupply sequence -----------------------------------------
 const UPGRADES = [
   () => { G.weapons.missiles += CFG.missileAmmo; return ["MISSILES ONLINE", `${CFG.missileAmmo} forward missiles — press MSL / X`]; },
   () => { G.weapons.smoke = 3; return ["SMOKE SCREEN FITTED", "3 charges — press SMK / C to blind pursuers"]; },
@@ -974,7 +1025,8 @@ function dockVan() {
   setTimeout(() => AudioSys.sfx.upgrade(), 350);
 }
 
-// ================================================================== update ==
+// #endregion van docking --------------------------------------------------------------------------
+// #region update — the entire simulation, in one function -----------------------------------------
 let skyOff = 0;
 
 function update(dt) {
@@ -994,12 +1046,13 @@ function update(dt) {
   }
   if (G.state !== "play") { updateParticles(dt); return; }
 
-  // --- boost ---
+  // #region boost -----------------------------------------------------------
   if (G.boost.active > 0) G.boost.active -= dt;
   if (input.joyBoost && !G.boostHeld) fireBoost();   // stick-up is an edge trigger
   G.boostHeld = input.joyBoost;
 
-  // --- speed / steering ---
+  // #endregion boost --------------------------------------------------------
+  // #region speed / steering ------------------------------------------------
   const seg = segAt(G.playerZ + CFG.segLen * 2);
   const offroad = Math.abs(G.playerX) > CFG.roadHalfW - 0.3;
   const targetSpeed = (input.brake || input.joyBrake) ? 8 : offroad ? CFG.offroadMax
@@ -1031,7 +1084,8 @@ function update(dt) {
     AudioSys.sfx.vanNear();
   }
 
-  // --- spawning ---
+  // #endregion speed / steering ---------------------------------------------
+  // #region spawning --------------------------------------------------------
   spawnAhead();
   G.chaserTimer -= dt;
   const maxChasers = Math.min(1 + Math.floor(G.level / 2), CFG.chaserMax);
@@ -1048,7 +1102,8 @@ function update(dt) {
     G.truckTimer = rand(20, 30);
   }
 
-  // --- cars ahead ---
+  // #endregion spawning -----------------------------------------------------
+  // #region cars ahead ------------------------------------------------------
   for (let i = G.cars.length - 1; i >= 0; i--) {
     const c = G.cars[i];
     c.pz = c.z; c.px = c.x;
@@ -1124,7 +1179,8 @@ function update(dt) {
     }
   }
 
-  // --- machine guns ---
+  // #endregion cars ahead ---------------------------------------------------
+  // #region machine guns ----------------------------------------------------
   // continuous target lock — the driver sees what's in the sights BEFORE firing
   G.lastAim = findGunTarget();
   G.gunCd -= dt;
@@ -1145,7 +1201,8 @@ function update(dt) {
     }
   }
 
-  // --- missiles ---
+  // #endregion machine guns -------------------------------------------------
+  // #region missiles --------------------------------------------------------
   for (let i = G.missiles.length - 1; i >= 0; i--) {
     const m = G.missiles[i];
     m.pz = m.z; m.px = m.x;
@@ -1181,11 +1238,13 @@ function update(dt) {
     if (m.z - G.playerZ > 800 || (m.target && m.target.dead)) G.missiles.splice(i, 1);
   }
 
-  // --- smoke ---
+  // #endregion missiles -----------------------------------------------------
+  // #region smoke -----------------------------------------------------------
   if (G.smoke.active > 0) G.smoke.active -= dt;
   if (G.smoke.cooldown > 0) G.smoke.cooldown -= dt;
 
-  // --- supply pickups (from destroyed trucks) ---
+  // #endregion smoke --------------------------------------------------------
+  // #region supply pickups (from destroyed trucks) --------------------------
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const p = G.pickups[i];
     p.pz = p.z; p.t += dt;
@@ -1197,7 +1256,8 @@ function update(dt) {
     }
   }
 
-  // --- oil slicks ---
+  // #endregion supply pickups (from destroyed trucks) -----------------------
+  // #region oil slicks ------------------------------------------------------
   for (let i = G.slicks.length - 1; i >= 0; i--) {
     const s = G.slicks[i];
     s.pd = s.dist;
@@ -1224,7 +1284,8 @@ function update(dt) {
     }
   }
 
-  // --- chasers ---
+  // #endregion oil slicks ---------------------------------------------------
+  // #region chasers ---------------------------------------------------------
   const smoked = G.smoke.active > 0;
   for (let i = G.chasers.length - 1; i >= 0; i--) {
     const ch = G.chasers[i];
@@ -1289,7 +1350,8 @@ function update(dt) {
     }
   }
 
-  // --- armor / game over ---
+  // #endregion chasers ------------------------------------------------------
+  // #region armor / game over -----------------------------------------------
   G.armor = clamp(G.armor, 0, 100);
   if (G.armor <= 0) {
     G.state = "over";
@@ -1309,6 +1371,8 @@ function update(dt) {
     if (G.announce[i].t <= 0) G.announce.splice(i, 1);
   }
   AudioSys.engine(speedPct, true);
+  // #endregion armor / game over --------------------------------------------
+
 }
 
 function updateParticles(dt) {
@@ -1321,7 +1385,8 @@ function updateParticles(dt) {
     if (p.wy < segY(p.wz)) { p.wy = segY(p.wz); p.vy *= -0.4; }
   }
 }
-// ================================================================= rendering
+// #endregion update -------------------------------------------------------------------------------
+// #region rendering — projection, sky, ridges, drawWorld() ----------------------------------------
 // Everything draws into a small offscreen buffer, then blits upscaled with
 // smoothing disabled — that low-res buffer IS the 8-16 bit pixel aesthetic,
 // and it cheapens fill rate on mobile GPUs as a bonus.
@@ -1647,7 +1712,8 @@ function drawWorld(camY, rz, rx, alpha) {
 
   ctx.restore(); // un-translate
 }
-// ------------------------------------------------------------- mirror view
+// #endregion rendering ----------------------------------------------------------------------------
+// #region mirror view — the rearview-mirror renderer ----------------------------------------------
 // Maps "meters behind" to mirror y/scale: chasers, smoke, oil all live here.
 function mirrorMap(d) {
   d = Math.max(2.5, d);
@@ -1749,7 +1815,8 @@ function renderMirror(rz, alpha) {
   g.fillStyle = sheen; g.fillRect(0, 0, MW, MH);
 }
 
-// ---------------------------------------------------------------- cockpit --
+// #endregion mirror view --------------------------------------------------------------------------
+// #region cockpit — dash, A-pillars, steering wheel -----------------------------------------------
 function drawCockpit(rz, rx) {
   const dashTop = H * 0.78;
   // dashboard
@@ -1868,7 +1935,8 @@ function aimPoint(rz, rx) {
   return { x: W / 2, y: horizonY() + H * 0.05 };
 }
 
-// ---------------------------------------------------- crisp text queue --
+// #endregion cockpit ------------------------------------------------------------------------------
+// #region crisp text queue: qtext() / flushText() — read before touching text --------------------
 // All legible UI text is queued during the buffer render and drawn afterwards
 // on the visible canvas at full resolution (George: "clean up ALL text in the
 // game, not just the home screen", 2026-11-07). World-art glyphs (pickup
@@ -1900,7 +1968,8 @@ function flushText() {
   TQ.length = 0;
 }
 
-// -------------------------------------------------------------------- HUD --
+// #endregion crisp text queue ---------------------------------------------------------------------
+// #region HUD — score, MPH, weapon chips, announcements -------------------------------------------
 function drawHUD() {
   const amber = "#ffb45e";
   // score block
@@ -2021,7 +2090,8 @@ function drawButtons() {
   ctx.textAlign = "left";
 }
 
-// ------------------------------------------------------ joystick overlay --
+// #endregion HUD ----------------------------------------------------------------------------------
+// #region joystick overlay — thumb-stick feedback -------------------------------------------------
 function drawJoystick() {
   if (G.state !== "play") return;
   ctx.textAlign = "center";
@@ -2055,7 +2125,8 @@ function drawJoystick() {
   }
   ctx.textAlign = "left";
 }
-// --------------------------------------------------------------- overlays --
+// #endregion joystick overlay ---------------------------------------------------------------------
+// #region overlays — title, pause, game over, rotate screen ---------------------------------------
 function drawAnnounce() {
   let y = H * 0.215;
   for (const a of G.announce) {
@@ -2153,7 +2224,8 @@ function drawOver() {
   qtext("TAP OR PRESS SPACE TO DRIVE AGAIN", W / 2, H * 0.74, Math.round(H * 0.042), { color: "rgba(255,220,150," + blink.toFixed(2) + ")", align: "center" });
 }
 
-// ------------------------------------------------------------ frame render --
+// #endregion overlays -----------------------------------------------------------------------------
+// #region frame render — buffer blit + CRT scanlines ----------------------------------------------
 function render(alpha) {
   const shX = G.shake > 0 ? rand(-1, 1) * G.shake * 7 : 0;
   const shY = G.shake > 0 ? rand(-1, 1) * G.shake * 5 : 0;
@@ -2215,7 +2287,8 @@ function render(alpha) {
   flushText();
 }
 
-// --------------------------------------------------------------- main loop --
+// #endregion frame render -------------------------------------------------------------------------
+// #region main loop — fixed timestep + adaptive quality -------------------------------------------
 const STEP = 1 / 60;
 let last = 0, acc = 0;
 let perfAcc = 0, perfN = 0, perfTier = 0;
@@ -2256,7 +2329,8 @@ function resize() {
   computeButtons(W, H);
 }
 
-// ------------------------------------------------------------------- boot --
+// #endregion main loop ----------------------------------------------------------------------------
+// #region boot — init, window.__test hooks, first frame -------------------------------------------
 buildSprites();
 buildTrack();
 loadStore();
@@ -2284,6 +2358,8 @@ window.__test = {
   spawnTruck: (dz) => spawnTruck(dz || 120),
   pickups: () => G.pickups,
 };
+// #endregion boot ---------------------------------------------------------------------------------
+
 </script>
 </body>
 </html>
