@@ -6,7 +6,35 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.1.0] — 2026-11-09
+## [Unreleased]
+
+### Changed
+
+- **`index.html` is now navigable.** The script is divided into 22 named `#region`
+  sections (previously anonymous banner comments), each closing with a matching
+  `// #endregion`. In VS Code, `Cmd/Ctrl+Shift+O` jumps straight to any section via
+  the breadcrumbs, Outline panel, or fold gutter.
+- `update()` — the 347-line heart of the simulation — is further divided into 11 nested
+  regions (`boost`, `speed / steering`, `spawning`, `cars ahead`, `machine guns`,
+  `missiles`, `smoke`, `supply pickups`, `oil slicks`, `chasers`, `armor / game over`).
+- The file now opens with a section index (table of contents) grouped into CORE,
+  INPUT & COMBAT, SIMULATION, RENDERING and FRAME, so the layout is legible before you
+  scroll.
+
+**Comment-only change:** all 1,998 lines of code are byte-identical to `v0.1.0`, verified
+by stripping comments from both revisions and diffing. Behaviour is unchanged — confirmed
+by an A/B run of the automated probe against both revisions: identical 61 fps, clean
+console, identical smoke-screen shove (78 → 178 → 233 → 288 m → pursuer lost) and
+identical 235 MPH boost peak. `file://` opening still works.
+
+### Added
+
+- `DEVELOPERS.md`: the `// #region` convention added to Conventions, and a new gotcha —
+  headless browsers throttle background tabs, which auto-pauses the game and can make a
+  scripted test look like a game bug.
+
+---
+
 
 First public release. The Interceptor leaves the lab.
 
