@@ -1,5 +1,7 @@
 # INTERCEPTOR — Driver's Seat
 
+**▶ Play it: [interceptor-six.vercel.app](https://interceptor-six.vercel.app)** — best on a phone, held sideways.
+
 A first-person, mobile-first homage to the 1983 arcade classic **Spy Hunter**, rebuilt
 from the driver's point of view. Plain HTML + JS + Canvas in a single file — no
 libraries, no build step, no external assets. Full 8–16-bit pixel aesthetic: the whole
@@ -18,7 +20,10 @@ dock with the weapons van to escalate your arsenal.
 
 ## How to run
 
-Open `index.html` in any modern browser, or serve the folder with any static file
+**Live:** [interceptor-six.vercel.app](https://interceptor-six.vercel.app) — deployed on
+Vercel, production tracks `main`, so every push redeploys. Nothing to install.
+
+Locally, open `index.html` in any modern browser, or serve the folder with any static file
 server. Designed for **phones in landscape** (a rotate prompt appears in portrait);
 fully playable on desktop with a keyboard. The low-res render buffer keeps fill rate
 low on mobile GPUs, and the game degrades draw distance automatically if a device

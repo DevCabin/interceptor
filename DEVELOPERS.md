@@ -38,6 +38,10 @@ That's it. If you're looking for the rest of the project, there isn't any.
 
 ## Running it
 
+**Live build: <https://interceptor-six.vercel.app>** — Vercel project `interceptor`, production tracks `main`, so a push to `main` redeploys. The served `index.html` is byte-identical to the committed one (no build step, no transforms), which makes "is the deploy current?" a checksum question: `shasum -a 256 index.html` vs `curl -s https://interceptor-six.vercel.app/index.html | shasum -a 256`.
+
+Locally:
+
 ```bash
 cd <project dir>
 python3 -m http.server 8901

@@ -32,6 +32,12 @@ identical 235 MPH boost peak. `file://` opening still works.
 - `DEVELOPERS.md`: the `// #region` convention added to Conventions, and a new gotcha —
   headless browsers throttle background tabs, which auto-pauses the game and can make a
   scripted test look like a game bug.
+- **Live build: <https://interceptor-six.vercel.app>** — the Vercel project (`interceptor`,
+  production tracking `main`) is now linked from the README, from *Running it* in
+  `DEVELOPERS.md`, and from the repository's homepage field and description, so the
+  playable game is reachable from the GitHub landing page rather than only by URL.
+  The deployed `index.html` is byte-identical to the committed one — verified by SHA-256,
+  which is the cheapest way to answer "is the deploy current?" in a project with no build.
 
 ---
 
